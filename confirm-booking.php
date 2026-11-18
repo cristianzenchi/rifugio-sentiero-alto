@@ -9,13 +9,11 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
     }
 
     if (!isset($_SESSION["idUser"])) {
-        // Se l'utente non è loggato, reindirizza alla pagina di login.
         header("Location: login.php");
         exit();
     }
 
     if (!isset($_SESSION["pendingBooking"])) {
-        // Se non ci sono dati di prenotazione in sospeso, reindirizza alla pagina delle camere.
         header("Location: rooms.php");
         exit();
     }
@@ -36,8 +34,8 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
         die("Conferma non valida. Riapri il riepilogo.");
     }
 
+    // Le checkbox assenti valgono 0; se inviate accettano soltanto la stringa "1".
     $breakfast = 0;
-    // Controlla se l'utente ha selezionato l'opzione per la colazione
     if(isset($_POST["breakfast"])) {
 
         if($_POST["breakfast"] === "1") {
@@ -52,7 +50,6 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
     }
     
     $dinner = 0;
-    // Controlla se l'utente ha selezionato l'opzione per la cena
     if(isset($_POST["dinner"])) {
         
         if($_POST["dinner"] === "1") {
@@ -67,7 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
     }
 
     $idMenu = null;
-    // Controlla se l'utente ha selezionato un menu fisso
     if(isset($_POST["idMenu"])){
         if($_POST["idMenu"] !== ""){
 
@@ -99,7 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
                 die("Menu selezionato non disponibile.");
     }
 }
-    // Recupera l'ID dell'utente loggato e i dati della prenotazione in sospeso dalla sessione
+    // Utente dalla sessione autenticata, camera e date dalla bozza: non dal POST.
     $idUser = $_SESSION["idUser"];
     $pendingBooking = $_SESSION["pendingBooking"];
     $idRoom = $pendingBooking["idRoom"];
@@ -117,7 +113,8 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
     
     $status = 1; // Imposta lo stato della prenotazione a "confermata"
     
-    // Transazione: un gruppo di operazioni che devono essere eseguite tutte insieme o nessuna.
+    // Il lock serializza le conferme della stessa camera: controllo e INSERT
+    // condividono la transazione per evitare prenotazioni sovrapposte.
     try{
 
         $connection->begin_transaction();
@@ -139,38 +136,25 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
                   AND status = 1
                 )";
 
-        /* 
-            Prepara l'istruzione SQL e conserva in $stmt l'oggetto
-            con cui assoceremo i parametri ed eseguiremo la query.
-        */ 
 
         $stmt = $connection->prepare($availabilityQuery);
 
-        /* 
-            Associa i valori ai quattro ? nell'ordine in cui compaiono nella query.
-            "iiss" indica i tipi: due interi (i), seguiti da due stringhe (s).
-        */
         $stmt->bind_param("iiss", $idRoom, $numGuests, $checkOut, $checkIn);
 
-        // Esegue lo statement usando i valori associati.
         $stmt->execute();
 
-        // Recupera il risultato
         $result = $stmt->get_result();
 
         if ($result->num_rows === 0) {
             $connection->rollback();
             die("La camera non è disponibile per il soggiorno selezionato. Ripeti la ricerca.");
         }
-        // Recupera la riga del risultato come array associativo.
         $room = $result->fetch_assoc();
     
-        // Crea oggetti DateTimeImmutable per calcolare il numero di notti del soggiorno
         $checkInDate = new DateTimeImmutable($checkIn);
         $checkOutDate = new DateTimeImmutable($checkOut);
-        // Calcola la differenza tra le due date e ottiene il numero di giorni
         $nights = $checkInDate->diff($checkOutDate)->days;
-        // Calcola il prezzo totale del soggiorno moltiplicando il numero di notti per il prezzo per notte della camera
+        // Il prezzo viene ricalcolato sul server, senza fidarsi del totale nel browser.
         $totalPrice = $nights * $room["pricePerNight"];
         if($breakfast === 1){
 
@@ -182,10 +166,9 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
         $stmt = $connection->prepare($bookingQuery);
         $stmt->bind_param("iiissidiii", $idUser, $idRoom, $numGuests, $checkIn, $checkOut, $status, $totalPrice, $breakfast, $dinner, $idMenu);
         $stmt->execute();
-        // Conferma le modifiche
+        // La bozza viene rimossa soltanto dopo il commit, evitando conferme duplicate.
         $connection->commit();
         $_SESSION["successMessage"] = "Prenotazione confermata!";
-        // Elimina la bozza 
         unset($_SESSION["pendingBooking"]);
         header("Location:account.php");
         exit();

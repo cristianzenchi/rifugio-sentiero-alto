@@ -1,9 +1,7 @@
 <?php 
-// Richiama la sessione esistente o ne crea una nuova se non esiste.
 session_start();
 
 if (!isset($_SESSION["idUser"])) {
-    // Se l'utente non è loggato, reindirizza alla pagina di login.
     header("Location: login.php");
     exit();
 }

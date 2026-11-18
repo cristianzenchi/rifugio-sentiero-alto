@@ -1,11 +1,9 @@
 <?php
 
-// Richiama la sessione esistente o ne crea una nuova se non esiste.
 session_start();
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     
-    // Reindirizza all'area personale
     header("Location: account.php");
     exit();
 }

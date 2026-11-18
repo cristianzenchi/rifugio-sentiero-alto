@@ -9,13 +9,11 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST"){
     }
 
     if (!isset($_SESSION["idUser"])) {
-        // Se l'utente non è loggato, reindirizza alla pagina di login.
         header("Location: login.php");
         exit();
     }
 
     if (!isset($_SESSION["pendingBooking"])) {
-        // Se non ci sono dati di prenotazione in sospeso, reindirizza alla pagina delle camere.
         header("Location: rooms.php");
         exit();
     }

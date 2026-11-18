@@ -514,6 +514,17 @@ margin: 24px 0;
 
 }
 
+.auth-form input[aria-invalid="true"] {
+    border-color: #9F2D30;
+    background-color: #FFF6F6;
+}
+
+.field-error {
+    margin: 0;
+    color: #9F2D30;
+    font-size: 14px;
+}
+
 
 @media (max-width: 768px) {
 

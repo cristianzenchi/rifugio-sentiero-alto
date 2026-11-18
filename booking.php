@@ -1,11 +1,8 @@
 <?php
-    // Richiama la sessione esistente o ne crea una nuova se non esiste 
     session_start();
     if ($_SERVER["REQUEST_METHOD"] === "POST"){
     
-        // Verifica se i campi richiesti sono stati inviati
         if(isset($_POST["idRoom"], $_POST["numGuests"], $_POST["checkIn"], $_POST["checkOut"])) {
-        // Assegna le variabili dai campi ricevuti dal modulo
         $idRoom = $_POST["idRoom"];
         $numGuests = $_POST["numGuests"];
         $checkIn = $_POST["checkIn"];
@@ -18,25 +15,19 @@
             die("ID camera o numero di ospiti non validi");
         }
 
-    /* 
-        Controlla che le date siano nel formato corretto (YYYY-MM-DD). 
-        Tramite preg_match() verifica che la stringa sia composta esattamente da quattro cifre,
-        un trattino, due cifre, un trattino e due cifre.
-        Il controllo del formato, da solo, non rileva date inesistenti come 2024-02-31.   
-    */
+    // La regex controlla il formato; checkdate() esclude date inesistenti.
     $checkInValid = is_string($checkIn)
     && preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/', $checkIn) === 1;
     $checkOutValid = is_string($checkOut)
     && preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/', $checkOut) === 1;
 
-    // Verifica che le date siano valide
     if($checkInValid){
 
         [
             $year, $month, $day
-        ] = explode("-", $checkIn); // Divide la stringa in tre parti separate dal trattino.
+        ] = explode("-", $checkIn);
 
-        $checkInValid = checkdate((int)$month, (int)$day, (int)$year); // Controlla che la data esista davvero.
+        $checkInValid = checkdate((int)$month, (int)$day, (int)$year);
 
     }
 
@@ -44,12 +35,11 @@
 
         [
             $year, $month, $day
-        ] = explode("-", $checkOut); // Divide la stringa in tre parti separate dal trattino.
+        ] = explode("-", $checkOut);
 
-        $checkOutValid = checkdate((int)$month, (int)$day, (int)$year); // Controlla che la data esista davvero.
+        $checkOutValid = checkdate((int)$month, (int)$day, (int)$year);
 
     }
-        // Controlla che le date siano valide
         if (!$checkInValid || !$checkOutValid){
 
             die("Data di check-in o check-out non valida.");
@@ -74,19 +64,13 @@
     }
 
 } 
-    /*
-        I controlli sull'autenticazione e sulla bozza sono fuori dal blocco POST,
-        quindi vengono eseguiti anche nelle richieste GET, come al ritorno dal login.
-        I dati del soggiorno vengono recuperati dalla sessione senza un nuovo invio del modulo.
-    */
+    // Questi controlli valgono anche per GET, quando si torna dal login o dalla cucina.
         if( !isset($_SESSION["idUser"])){
-        // Se l'utente non è loggato, reindirizza alla pagina di login
         header("Location: login.php");
         exit();
     }
 
     if( !isset($_SESSION["pendingBooking"])){
-        // Se non ci sono dati di prenotazione in sospeso, reindirizza alla pagina delle camere
         header("Location: rooms.php");
         exit();
     }
@@ -104,8 +88,8 @@
     $idMenu = $pendingBooking["idMenu"] ?? null;
 
 
-    // Collega il file che contiene la connessione al database
     require_once __DIR__ . "/includes/db.php";
+    // La disponibilità viene ricontrollata anche quando si riapre il riepilogo.
      $query = "SELECT idRoom, roomNumber, capacity, pricePerNight, description, imagePath
               FROM rooms
               WHERE idRoom = ?
@@ -118,43 +102,30 @@
                       AND status = 1
                 )";
 
-      /* 
-        Prepara l'istruzione SQL e conserva in $stmt l'oggetto
-        con cui assoceremo i parametri ed eseguiremo la query.
-      */ 
 
     $stmt = $connection->prepare($query);
 
-    /* 
-        Associa i valori ai tre ? nell'ordine in cui compaiono nella query.
-        "iiss" indica i tipi: due interi (i), seguiti da due stringhe (s).
-    */
     $stmt->bind_param("iiss", $idRoom, $numGuests, $checkOut, $checkIn);
 
-    // Esegue lo statement usando i valori associati.
     $stmt->execute();
 
-    // Recupera il risultato, che il ciclo HTML leggera' tramite fetch_assoc().
     $result = $stmt->get_result();
 
     if ($result->num_rows === 0) {
         die("La camera non è disponibile per il soggiorno selezionato. Ripeti la ricerca.");
     }
 
-    // Recupera la riga del risultato come array associativo.
     $room = $result->fetch_assoc();
-    // Crea oggetti DateTimeImmutable per calcolare il numero di notti del soggiorno
+    // Prezzo base senza colazione; il totale definitivo viene ricalcolato sul server.
     $checkInDate = new DateTimeImmutable($checkIn);
     $checkOutDate = new DateTimeImmutable($checkOut);
-    // Calcola la differenza tra le due date e ottiene il numero di giorni
     $nights = $checkInDate->diff($checkOutDate)->days;
-    // Calcola il prezzo totale del soggiorno moltiplicando il numero di notti per il prezzo per notte della camera
     $totalPrice = $nights * $room["pricePerNight"];
 
     $query = "SELECT idMenu, name, pricePerMenu FROM menus ORDER BY idMenu ASC";
     $menusResult = $connection->query($query);
 
-    // Legge la data di oggi per rifiutare un check-in precedente alla data odierna
+    // Usa lo stesso fuso orario dei controlli di conferma e annullamento.
     $todayDate = new DateTimeImmutable("today", new DateTimeZone("Europe/Rome"));
     $today = $todayDate->format("Y-m-d");
 
@@ -162,18 +133,11 @@
         die("La data di check-in non può essere nel passato.");
     }
     
-    // Crea un token per questa bozza, se non esiste gia'.
+    // Il token CSRF resta stabile per la bozza, anche quando si torna dalla cucina.
     if (!isset($_SESSION["pendingBooking"]["token"])) {
         $_SESSION["pendingBooking"]["token"] = bin2hex(random_bytes(32));
 }
 
-    /*
-        Il token serve a proteggere la prenotazione da attacchi CSRF.
-        Viene generato una sola volta e conservato nella sessione.
-        Quando l'utente invia il modulo di conferma, il token viene inviato
-        come campo nascosto e confrontato con quello in sessione.
-        Se i due token non corrispondono, la prenotazione viene rifiutata.
-    */
 
 ?> 
 
