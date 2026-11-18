@@ -64,4 +64,4 @@ Il progetto non include pagamenti online, pannello amministrativo o invio di ema
 
 Le immagini sono illustrative e non rappresentano un'unica struttura reale. Sono presenti fotografie e immagini generate con AI; fonti e dettagli sono raccolti in [`images/rooms/CREDITS.md`](images/rooms/CREDITS.md).
 
-Il link alla demo verrà aggiunto quando il sito sarà online.
+[Prova la demo online](https://rifugio-sentiero-alto.great-site.net/)
