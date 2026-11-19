@@ -514,7 +514,8 @@ margin: 24px 0;
 
 }
 
-.auth-form input[aria-invalid="true"] {
+.auth-form input[aria-invalid="true"],
+.search-form input[aria-invalid="true"] {
     border-color: #9F2D30;
     background-color: #FFF6F6;
 }
@@ -523,6 +524,25 @@ margin: 24px 0;
     margin: 0;
     color: #9F2D30;
     font-size: 14px;
+}
+
+/* Etichette, controlli ed errori condividono le righe della griglia. */
+.search-form.has-errors {
+    grid-template-rows: auto auto auto;
+    align-items: start;
+    row-gap: 8px;
+}
+
+.search-form.has-errors > .form-field {
+    display: grid;
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+    row-gap: 8px;
+}
+
+.search-form.has-errors > .button-primary {
+    grid-column: 4;
+    grid-row: 2;
 }
 
 
@@ -547,6 +567,20 @@ margin: 24px 0;
         grid-template-columns: minmax(0, 1fr);
         gap: 12px;
     
+    }
+
+    .search-form.has-errors {
+        grid-template-rows: none;
+    }
+
+    .search-form.has-errors > .form-field {
+        display: flex;
+        grid-row: auto;
+    }
+
+    .search-form.has-errors > .button-primary {
+        grid-column: auto;
+        grid-row: auto;
     }
 
     .home-hero {

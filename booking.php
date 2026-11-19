@@ -2,6 +2,15 @@
 session_start();
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
+  // Protegge anche la selezione iniziale, prima di sostituire la bozza.
+  if (
+    !isset($_SESSION["roomSelectionToken"], $_POST["roomSelectionToken"]) ||
+    !is_string($_POST["roomSelectionToken"]) ||
+    !hash_equals($_SESSION["roomSelectionToken"], $_POST["roomSelectionToken"])
+  ) {
+    die("Selezione non valida. Ripeti la ricerca delle camere.");
+  }
+
   if (isset($_POST["idRoom"], $_POST["numGuests"], $_POST["checkIn"], $_POST["checkOut"])) {
     $idRoom = $_POST["idRoom"];
     $numGuests = $_POST["numGuests"];

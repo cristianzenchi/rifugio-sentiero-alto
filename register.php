@@ -1,4 +1,9 @@
 <?php
+session_start();
+
+if (!isset($_SESSION["registerToken"])) {
+    $_SESSION["registerToken"] = bin2hex(random_bytes(32));
+}
 
 $errors = [];
 
@@ -8,7 +13,13 @@ $email = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    if (isset($_POST["name"], $_POST["surname"], $_POST["email"], $_POST["password"], $_POST["confirmPassword"])) {
+    if (
+        !isset($_POST["registerToken"]) ||
+        !is_string($_POST["registerToken"]) ||
+        !hash_equals($_SESSION["registerToken"], $_POST["registerToken"])
+    ) {
+        $errors["register"] = "Richiesta di registrazione non valida. Riprova dal modulo qui sotto.";
+    } elseif (isset($_POST["name"], $_POST["surname"], $_POST["email"], $_POST["password"], $_POST["confirmPassword"])) {
 
         $name = $_POST["name"];
         $surname = $_POST["surname"];
@@ -111,6 +122,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <main class="auth-page">
         <h1>Crea un account</h1>
         <form action="register.php" method="post" class="auth-form">
+            <?php if (isset($errors["register"])) { ?>
+                <p class="field-error" role="alert">
+                    <?php echo htmlspecialchars($errors["register"], ENT_QUOTES, "UTF-8"); ?>
+                </p>
+            <?php } ?>
+            <input type="hidden" name="registerToken"
+                value="<?php echo $_SESSION["registerToken"]; ?>" />
             <div class="form-field">
                 <label for="name">Nome</label>
                 <input
