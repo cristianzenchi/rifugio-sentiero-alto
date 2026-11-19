@@ -3,23 +3,23 @@
 session_start();
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    
+
     header("Location: account.php");
     exit();
 }
 
-  // Rifiuta token mancanti o un valore ricevuto che non sia una stringa.
-    if (
-        !isset($_SESSION["logoutToken"], $_POST["logoutToken"]) ||
-        !is_string($_POST["logoutToken"])) 
-    {
-        die("Richiesta di uscita non valida. Ricarica l'area personale.");
-    }
+// Rifiuta token mancanti o un valore ricevuto che non sia una stringa.
+if (
+    !isset($_SESSION["logoutToken"], $_POST["logoutToken"]) ||
+    !is_string($_POST["logoutToken"])
+) {
+    die("Richiesta di uscita non valida. Ricarica l'area personale.");
+}
 
-    // Rifiuta un token diverso da quello conservato nella sessione.
-    if (!hash_equals($_SESSION["logoutToken"], $_POST["logoutToken"])) {
-        die("Richiesta di uscita non valida. Ricarica l'area personale.");
-    }
+// Rifiuta un token diverso da quello conservato nella sessione.
+if (!hash_equals($_SESSION["logoutToken"], $_POST["logoutToken"])) {
+    die("Richiesta di uscita non valida. Ricarica l'area personale.");
+}
 
 
 $_SESSION = [];
@@ -44,5 +44,3 @@ if (ini_get("session.use_cookies")) {
 
 header("Location: login.php");
 exit();
-
-?>
